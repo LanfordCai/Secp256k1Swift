@@ -1,0 +1,25 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "secp256k1",
+        "repositoryURL": "https://github.com/Boilertalk/secp256k1.swift.git",
+        "state": {
+          "branch": null,
+          "revision": "823281fe9def21b384099b72a9a53ca988317b20",
+          "version": "0.1.4"
+        }
+      },
+      {
+        "package": "Yaml",
+        "repositoryURL": "https://github.com/behrang/YamlSwift.git",
+        "state": {
+          "branch": null,
+          "revision": "287f5cab7da0d92eb947b5fd8151b203ae04a9a3",
+          "version": "3.4.4"
+        }
+      }
+    ]
+  },
+  "version": 1
+}
