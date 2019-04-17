@@ -5,6 +5,9 @@ import PackageDescription
 
 let package = Package(
     name: "Secp256k1Swift",
+    platforms: [
+        .macOS(.v10_13), .iOS(.v12),
+    ],
     products: [
         .library(
             name: "Secp256k1Swift",
@@ -12,7 +15,7 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/Boilertalk/secp256k1.swift.git", from: "0.1.0"),
+        .package(url: "https://github.com/LanfordCai/secp256k1.swift.git", from: "0.2.0"),
         .package(url: "https://github.com/behrang/YamlSwift.git", from: "3.4.4"),
     ],
     targets: [

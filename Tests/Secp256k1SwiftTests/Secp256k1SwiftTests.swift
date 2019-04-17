@@ -3,23 +3,6 @@ import XCTest
 import Yaml
 
 final class Secp256k1SwiftTests: XCTestCase {
-    var pubkeyVectors: [[String: String]]!
-    var signVectors: [[String: String]]!
-    var pubkeyTweakAddVectors: [[String: String]]!
-    var pubkeyTweakMulVectors: [[String: String]]!
-    var privkeyTweakAddVectors: [[String: String]]!
-    var privkeyTweakMulVectors: [[String: String]]!
-
-    override func setUp() {
-        super.setUp()
-        pubkeyVectors = loadTestVectors(vectorsName: "pubkey_vectors")
-        signVectors = loadTestVectors(vectorsName: "sign_vectors")
-        pubkeyTweakAddVectors = loadTestVectors(vectorsName: "pubkey_tweak_add_vectors")
-        pubkeyTweakMulVectors = loadTestVectors(vectorsName: "pubkey_tweak_mul_vectors")
-        privkeyTweakAddVectors = loadTestVectors(vectorsName: "privkey_tweak_add_vectors")
-        privkeyTweakMulVectors = loadTestVectors(vectorsName: "privkey_tweak_mul_vectors")
-    }
-
     func testKeyPair() {
         for _ in 1 ... 100 {
             let (privkey, pubkey) = try! Secp256k1.keyPair()
@@ -32,8 +15,23 @@ final class Secp256k1SwiftTests: XCTestCase {
     func testIsValidPrivateKey() {
         for _ in 1 ... 100 {
             let (privkey, pubkey) = try! Secp256k1.keyPair()
-            XCTAssertEqual(Secp256k1.isValidPrivateKey(privkey), true)
-            XCTAssertEqual(Secp256k1.isValidPrivateKey(pubkey), false)
+            XCTAssertTrue(Secp256k1.isValidPrivateKey(privkey))
+            XCTAssertFalse(Secp256k1.isValidPrivateKey(pubkey))
+        }
+    }
+
+    func testIsValidPublicKey() {
+        let pubkeyVectors = loadTestVectors(vectorsName: "pubkey_vectors")
+        for vector in pubkeyVectors {
+            let (privkey, cpubkey, pubkey) = (
+                [UInt8](hex: vector["seckey"]!),
+                [UInt8](hex: vector["compressed"]!),
+                [UInt8](hex: vector["pubkey"]!)
+            )
+
+            XCTAssertTrue(Secp256k1.isValidPublicKey(cpubkey))
+            XCTAssertTrue(Secp256k1.isValidPublicKey(pubkey))
+            XCTAssertFalse(Secp256k1.isValidPublicKey(privkey))
         }
     }
 
@@ -50,6 +48,7 @@ final class Secp256k1SwiftTests: XCTestCase {
     }
 
     func testVerify() {
+        let signVectors = loadTestVectors(vectorsName: "sign_vectors")
         for vector in signVectors {
             let (msg, privkey, sig) = (
                 [UInt8](hex: vector["msg"]!),
@@ -59,15 +58,16 @@ final class Secp256k1SwiftTests: XCTestCase {
 
             let pubkey = try! Secp256k1.derivePublicKey(for: privkey)
             var result = Secp256k1.verify(msg: msg, sig: sig, pubkey: pubkey)
-            XCTAssertEqual(result, true)
+            XCTAssertTrue(result)
 
             let invalidSig = sig + [1]
             result = Secp256k1.verify(msg: msg, sig: invalidSig, pubkey: pubkey)
-            XCTAssertEqual(result, false)
+            XCTAssertFalse(result)
         }
     }
 
     func testSign() {
+        let signVectors = loadTestVectors(vectorsName: "sign_vectors")
         for vector in signVectors {
             let (msg, privkey, eSig) = (
                 [UInt8](hex: vector["msg"]!),
@@ -81,6 +81,7 @@ final class Secp256k1SwiftTests: XCTestCase {
     }
 
     func testDerivePubkey() {
+        let pubkeyVectors = loadTestVectors(vectorsName: "pubkey_vectors")
         for vector in pubkeyVectors {
             let (privkey, cpubkey, pubkey) = (
                 [UInt8](hex: vector["seckey"]!),
@@ -96,6 +97,7 @@ final class Secp256k1SwiftTests: XCTestCase {
     }
 
     func testCompressPubkeyAndDecompressPubkey() {
+        let pubkeyVectors = loadTestVectors(vectorsName: "pubkey_vectors")
         for vector in pubkeyVectors {
             let (cpubkey, pubkey) = (
                 [UInt8](hex: vector["compressed"]!),
@@ -107,6 +109,7 @@ final class Secp256k1SwiftTests: XCTestCase {
     }
 
     func testPubkeyTweakAdd() {
+        let pubkeyTweakAddVectors = loadTestVectors(vectorsName: "pubkey_tweak_add_vectors")
         for vector in pubkeyTweakAddVectors {
             let (pubkey, tweak, tweaked) = (
                 [UInt8](hex: vector["publicKey"]!),
@@ -123,6 +126,7 @@ final class Secp256k1SwiftTests: XCTestCase {
     }
 
     func testPubkeyTweakMul() {
+        let pubkeyTweakMulVectors = loadTestVectors(vectorsName: "pubkey_tweak_mul_vectors")
         for vector in pubkeyTweakMulVectors {
             let (pubkey, tweak, tweaked) = (
                 [UInt8](hex: vector["publicKey"]!),
@@ -139,6 +143,7 @@ final class Secp256k1SwiftTests: XCTestCase {
     }
 
     func testPrivkeyTweakAdd() {
+        let privkeyTweakAddVectors = loadTestVectors(vectorsName: "privkey_tweak_add_vectors")
         for vector in privkeyTweakAddVectors {
             let (privkey, tweak, tweaked) = (
                 [UInt8](hex: vector["privkey"]!),
@@ -151,6 +156,7 @@ final class Secp256k1SwiftTests: XCTestCase {
     }
 
     func testPrivkeyTweakMul() {
+        let privkeyTweakMulVectors = loadTestVectors(vectorsName: "privkey_tweak_mul_vectors")
         for vector in privkeyTweakMulVectors {
             let (privkey, tweak, tweaked) = (
                 [UInt8](hex: vector["privkey"]!),
@@ -169,7 +175,7 @@ final class Secp256k1SwiftTests: XCTestCase {
 
             let (sig, recID) = try! Secp256k1.signCompact(msg: msg, with: privkey, nonceFunction: .default)
 
-            XCTAssertEqual(Secp256k1.verifyCompact(msg: msg, sig: sig, pubkey: pubkey), true)
+            XCTAssertTrue(Secp256k1.verifyCompact(msg: msg, sig: sig, pubkey: pubkey))
 
             let recPubkey = try! Secp256k1.recoverCompact(msg: msg, sig: sig, recID: recID, compression: .uncompressed)
             XCTAssertEqual(recPubkey, pubkey)
@@ -196,8 +202,9 @@ final class Secp256k1SwiftTests: XCTestCase {
     ]
 
     private func loadTestVectors(vectorsName: String) -> [[String: String]] {
-        guard let path = Bundle(for: Secp256k1SwiftTests.self).path(forResource: vectorsName, ofType: "yaml"),
-            let content = try? String(contentsOfFile: path),
+        let path = testVectorPath(withFilename: vectorsName)
+        print(path)
+        guard let content = try? String(contentsOfFile: path),
             let testVectors = try? Yaml.load(content).array else {
             XCTFail("Can't load test vector file")
             return []
@@ -211,5 +218,12 @@ final class Secp256k1SwiftTests: XCTestCase {
                 return dict
             }
         }
+    }
+
+    private func testVectorPath(withFilename name: String) -> String {
+        guard let path = Bundle(for: Secp256k1SwiftTests.self).path(forResource: name, ofType: "yaml") else {
+            return "./Tests/Resources/\(name).yaml"
+        }
+        return path
     }
 }

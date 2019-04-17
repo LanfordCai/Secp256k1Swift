@@ -3,11 +3,11 @@
     "pins": [
       {
         "package": "secp256k1",
-        "repositoryURL": "https://github.com/Boilertalk/secp256k1.swift.git",
+        "repositoryURL": "https://github.com/LanfordCai/secp256k1.swift.git",
         "state": {
           "branch": null,
-          "revision": "823281fe9def21b384099b72a9a53ca988317b20",
-          "version": "0.1.4"
+          "revision": "ef3a1c5f8b39fafc1e753486c1fe1440468131e6",
+          "version": "0.2.0"
         }
       },
       {

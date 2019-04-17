@@ -14,7 +14,7 @@ public struct Secp256k1 {
     public typealias Signature = [UInt8]
     public typealias RecoveryID = Int32
 
-    public enum Secp256k1Error: Error {
+    public enum Error: Swift.Error {
         case invalidPublicKey
         case invalidPrivateKey
         case invalidSignature
@@ -64,7 +64,7 @@ public struct Secp256k1 {
         let status = SecRandomCopyBytes(kSecRandomDefault, privkey.count, &privkey)
         guard status == errSecSuccess,
             let pubkey = try? derivePublicKey(for: privkey) else {
-            throw Secp256k1Error.internalError
+            throw Error.internalError
         }
 
         return (privkey, pubkey)
@@ -83,7 +83,7 @@ public struct Secp256k1 {
         guard secp256k1_context_randomize(context, privkey) == 1,
             secp256k1_ec_pubkey_create(context, &cPubkey, privkey) == 1,
             secp256k1_ec_pubkey_serialize(context, &pubkey, &pubkeyLen, &cPubkey, compression.flag) == 1 else {
-            throw Secp256k1Error.internalError
+            throw Error.internalError
         }
 
         return pubkey
@@ -93,7 +93,7 @@ public struct Secp256k1 {
         guard pubkey.count == 65,
             let firstByte = pubkey.first,
             firstByte == 4 else {
-            throw Secp256k1Error.invalidPublicKey
+            throw Error.invalidPublicKey
         }
 
         let x = Array(pubkey[1 ... 32])
@@ -105,7 +105,7 @@ public struct Secp256k1 {
         guard pubkey.count == 33,
             let firstByte = pubkey.first,
             firstByte == 2 || firstByte == 3 else {
-            throw Secp256k1Error.invalidPublicKey
+            throw Error.invalidPublicKey
         }
 
         let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
@@ -118,7 +118,7 @@ public struct Secp256k1 {
         var uncompressedPubkey = [UInt8](repeating: 0, count: uncompressedKeyLen)
         guard secp256k1_ec_pubkey_parse(context, &cPubkey, pubkey, pubkey.count) == 1,
             secp256k1_ec_pubkey_serialize(context, &uncompressedPubkey, &uncompressedKeyLen, &cPubkey, Compression.uncompressed.flag) == 1 else {
-            throw Secp256k1Error.internalError
+            throw Error.internalError
         }
 
         return uncompressedPubkey
@@ -132,7 +132,7 @@ public struct Secp256k1 {
 
         var tweaked = privkey
         guard secp256k1_ec_privkey_tweak_add(context, &tweaked, tweak) == 1 else {
-            throw Secp256k1Error.internalError
+            throw Error.internalError
         }
 
         return tweaked
@@ -146,7 +146,7 @@ public struct Secp256k1 {
 
         var tweaked = privkey
         guard secp256k1_ec_privkey_tweak_mul(context, &tweaked, tweak) == 1 else {
-            throw Secp256k1Error.internalError
+            throw Error.internalError
         }
         return tweaked
     }
@@ -165,7 +165,7 @@ public struct Secp256k1 {
         guard secp256k1_ec_pubkey_parse(context, &cPubkey, pubkey, pubkey.count) == 1,
             secp256k1_ec_pubkey_tweak_add(context, &cPubkey, tweak) == 1,
             secp256k1_ec_pubkey_serialize(context, &tweaked, &outputLen, &cPubkey, flag) == 1 else {
-            throw Secp256k1Error.internalError
+            throw Error.internalError
         }
 
         return Array(tweaked[..<outputLen])
@@ -185,7 +185,7 @@ public struct Secp256k1 {
         guard secp256k1_ec_pubkey_parse(context, &cPubkey, pubkey, pubkey.count) == 1,
             secp256k1_ec_pubkey_tweak_mul(context, &cPubkey, tweak) == 1,
             secp256k1_ec_pubkey_serialize(context, &tweaked, &outputLen, &cPubkey, flag) == 1 else {
-            throw Secp256k1Error.internalError
+            throw Error.internalError
         }
 
         return Array(tweaked[..<outputLen])
@@ -193,7 +193,7 @@ public struct Secp256k1 {
 
     public static func sign(msg: [UInt8], with privkey: PrivateKey, nonceFunction: NonceFunction) throws -> Signature {
         guard isValidPrivateKey(privkey) else {
-            throw Secp256k1Error.invalidPrivateKey
+            throw Error.invalidPrivateKey
         }
 
         let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
@@ -202,20 +202,17 @@ public struct Secp256k1 {
         }
 
         var cSignature = secp256k1_ecdsa_signature()
-        var cNormalizedSignature = secp256k1_ecdsa_signature()
 
         guard secp256k1_ecdsa_sign(context, &cSignature, msg, privkey, nonceFunction.function, nil) == 1 else {
-            throw Secp256k1Error.internalError
+            throw Error.internalError
         }
-
-        secp256k1_ecdsa_signature_normalize(context, &cNormalizedSignature, &cSignature)
 
         var sigLen = 74
         var signature = [UInt8](repeating: 0, count: sigLen)
 
-        guard secp256k1_ecdsa_signature_serialize_der(context, &signature, &sigLen, &cNormalizedSignature) == 1,
-            secp256k1_ecdsa_signature_parse_der(context, &cNormalizedSignature, &signature, sigLen) == 1 else {
-            throw Secp256k1Error.internalError
+        guard secp256k1_ecdsa_signature_serialize_der(context, &signature, &sigLen, &cSignature) == 1,
+            secp256k1_ecdsa_signature_parse_der(context, &cSignature, &signature, sigLen) == 1 else {
+            throw Error.internalError
         }
 
         return Array(signature[..<sigLen])
@@ -243,7 +240,7 @@ public struct Secp256k1 {
 
     public static func signCompact(msg: [UInt8], with privkey: PrivateKey, nonceFunction: NonceFunction) throws -> (sig: Signature, recID: RecoveryID) {
         guard isValidPrivateKey(privkey) else {
-            throw Secp256k1Error.invalidPrivateKey
+            throw Error.invalidPrivateKey
         }
 
         let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
@@ -253,13 +250,13 @@ public struct Secp256k1 {
 
         var cSignature = secp256k1_ecdsa_recoverable_signature()
         guard secp256k1_ecdsa_sign_recoverable(context, &cSignature, msg, privkey, nonceFunction.function, nil) == 1 else {
-            throw Secp256k1Error.internalError
+            throw Error.internalError
         }
 
         var signature = [UInt8](repeating: 0, count: 64)
         var recoveryID: RecoveryID = 0
         guard secp256k1_ecdsa_recoverable_signature_serialize_compact(context, &signature, &recoveryID, &cSignature) == 1 else {
-            throw Secp256k1Error.internalError
+            throw Error.internalError
         }
 
         return (signature, recoveryID)
@@ -288,11 +285,11 @@ public struct Secp256k1 {
 
     public static func recoverCompact(msg: [UInt8], sig: Signature, recID: RecoveryID, compression: Compression) throws -> PublicKey {
         guard isValidRecoveryID(recID) else {
-            throw Secp256k1Error.invalidRecoveryID
+            throw Error.invalidRecoveryID
         }
 
         guard isValidCompactSignature(sig) else {
-            throw Secp256k1Error.invalidSignature
+            throw Error.invalidSignature
         }
 
         let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
@@ -309,7 +306,7 @@ public struct Secp256k1 {
             secp256k1_ecdsa_recover(context, &cPubkey, &cSignature, msg) == 1,
             secp256k1_ec_pubkey_serialize(context, &pubkey,
                                           &pubkeyLen, &cPubkey, compression.flag) == 1 else {
-            throw Secp256k1Error.internalError
+            throw Error.internalError
         }
 
         return pubkey
@@ -321,8 +318,23 @@ public struct Secp256k1 {
         } else if pubkey.count == 33, pubkey.first! == 2 || pubkey.first! == 3 {
             return .compressed
         } else {
-            throw Secp256k1Error.invalidPublicKey
+            throw Error.invalidPublicKey
         }
+    }
+
+    public static func isValidPublicKey(_ pubkey: PublicKey) -> Bool {
+        guard (pubkey.count == 33 && (pubkey.first! == 2 || pubkey.first! == 3)) ||
+            (pubkey.count == 65 && pubkey.first! == 4) else {
+            return false
+        }
+
+        let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
+        defer {
+            secp256k1_context_destroy(context)
+        }
+
+        var cPubkey = secp256k1_pubkey()
+        return secp256k1_ec_pubkey_parse(context, &cPubkey, pubkey, pubkey.count) == 1
     }
 
     public static func isValidPrivateKey(_ privkey: PrivateKey) -> Bool {
