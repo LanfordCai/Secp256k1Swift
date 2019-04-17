@@ -188,6 +188,7 @@ final class Secp256k1SwiftTests: XCTestCase {
 
     static var allTests = [
         ("testKeyPair", testKeyPair),
+        ("testIsValidPublicKey", testIsValidPublicKey),
         ("testIsValidPrivateKey", testIsValidPrivateKey),
         ("testCompression", testCompression),
         ("testVerify", testVerify),
